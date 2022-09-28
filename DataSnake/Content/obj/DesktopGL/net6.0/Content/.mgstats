@@ -1,4 +1,7 @@
 Source File,Dest File,Processor Type,Content Type,Source File Size,Dest File Size,Build Seconds
 "C:/Users/letit/source/repos/DataSnake/DataSnake/Content/ball.png","C:/Users/letit/source/repos/DataSnake/DataSnake/Content/bin/DesktopGL/Content/ball.xnb","TextureProcessor","Texture2DContent",135,1109,0.09857
 "C:/Users/letit/source/repos/DataSnake/DataSnake/Content/berry.png","C:/Users/letit/source/repos/DataSnake/DataSnake/Content/bin/DesktopGL/Content/berry.xnb","TextureProcessor","Texture2DContent",1778,4565,0.1088801
+"C:/Users/letit/source/repos/DataSnake/DataSnake/Content/diesfx.wav","C:/Users/letit/source/repos/DataSnake/DataSnake/Content/bin/DesktopGL/Content/diesfx.xnb","SoundEffectProcessor","SoundEffectContent",123462,123321,0.185202
+"C:/Users/letit/source/repos/DataSnake/DataSnake/Content/gameover.png","C:/Users/letit/source/repos/DataSnake/DataSnake/Content/bin/DesktopGL/Content/gameover.xnb","TextureProcessor","Texture2DContent",5230,542965,0.0913033
+"C:/Users/letit/source/repos/DataSnake/DataSnake/Content/gameoversfx.wav","C:/Users/letit/source/repos/DataSnake/DataSnake/Content/bin/DesktopGL/Content/gameoversfx.xnb","SongProcessor","SongContent",9128426,129,0.6710918
 "C:/Users/letit/source/repos/DataSnake/DataSnake/Content/pickup.wav","C:/Users/letit/source/repos/DataSnake/DataSnake/Content/bin/DesktopGL/Content/pickup.xnb","SoundEffectProcessor","SoundEffectContent",352744,352805,0.1908537
