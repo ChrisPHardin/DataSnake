@@ -1,0 +1,4 @@
+Source File,Dest File,Processor Type,Content Type,Source File Size,Dest File Size,Build Seconds
+"C:/Users/letit/source/repos/DataSnake/DataSnake/Content/ball.png","C:/Users/letit/source/repos/DataSnake/DataSnake/Content/bin/DesktopGL/Content/ball.xnb","TextureProcessor","Texture2DContent",135,1109,0.09857
+"C:/Users/letit/source/repos/DataSnake/DataSnake/Content/berry.png","C:/Users/letit/source/repos/DataSnake/DataSnake/Content/bin/DesktopGL/Content/berry.xnb","TextureProcessor","Texture2DContent",1778,4565,0.1088801
+"C:/Users/letit/source/repos/DataSnake/DataSnake/Content/pickup.wav","C:/Users/letit/source/repos/DataSnake/DataSnake/Content/bin/DesktopGL/Content/pickup.xnb","SoundEffectProcessor","SoundEffectContent",352744,352805,0.1908537
