@@ -13,6 +13,7 @@ namespace DataSnake
 
         Texture2D ballTexture;
         Texture2D berryTexture;
+        Texture2D gameOverTexture;
         Vector2 ballPosition;
         Vector2 lengthPosition;
         Vector2 turnPosition;
@@ -20,6 +21,7 @@ namespace DataSnake
         float timeSinceLastDraw = 0;
         List<Vector2> trailPos = new List<Vector2>();
         List<SoundEffect> soundEffects = new List<SoundEffect>();
+        Song gameOverMus;
         int trailCount = 0;
         int turnCount = 0;
         bool berryPickedUp = false;
@@ -56,8 +58,6 @@ namespace DataSnake
             ballPosition = new Vector2(_graphics.PreferredBackBufferWidth / 2,
 _graphics.PreferredBackBufferHeight / 2);
             ballSpeed = 100f;
-            soundEffects.Add(Content.Load<SoundEffect>("pickup"));
-
             base.Initialize();
         }
 
@@ -67,9 +67,17 @@ _graphics.PreferredBackBufferHeight / 2);
             _berryBatch = new SpriteBatch(GraphicsDevice);
 
             // TODO: use this.Content to load your game content here
+            //Textures
             ballTexture = Content.Load<Texture2D>("ball");
             berryTexture = Content.Load<Texture2D>("berry");
+            gameOverTexture = Content.Load<Texture2D>("gameover");
 
+            //SFX
+            soundEffects.Add(Content.Load<SoundEffect>("pickup"));
+            soundEffects.Add(Content.Load<SoundEffect>("diesfx"));
+
+            //Music
+            this.gameOverMus = Content.Load<Song>("gameoversfx");
         }
 
         protected override void Update(GameTime gameTime)
@@ -156,11 +164,11 @@ _graphics.PreferredBackBufferHeight / 2);
 
             if (((float)gameTime.TotalGameTime.TotalSeconds - timeSinceLastDraw) > 0.025)
             {
-                timeSinceLastDraw = (float)gameTime.TotalGameTime.TotalSeconds;
-                trailPos.Add(ballPosition);
-                trailCount++;
                 if (!dead)
                 {
+                    timeSinceLastDraw = (float)gameTime.TotalGameTime.TotalSeconds;
+                    trailPos.Add(ballPosition);
+                    trailCount++;
                     if (curDirection == 1)
                     {
                         ballPosition.Y -= ballSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -186,7 +194,12 @@ _graphics.PreferredBackBufferHeight / 2);
 
             if (ballPosition.X < (0 + (ballTexture.Width/2)) || ballPosition.X > (_graphics.PreferredBackBufferWidth - (ballTexture.Width / 2)) || ballPosition.Y < (0 + (ballTexture.Height/2)) || ballPosition.Y > (_graphics.PreferredBackBufferHeight - (ballTexture.Height/2)))
             {
-                dead = true;
+                if (!dead)
+                {
+                    dead = true;
+                    soundEffects[1].Play();
+                    MediaPlayer.Play(gameOverMus);
+                }
             }
 
             if (berryPickedUp == false && ballPosition.X > 45  && ballPosition.X < 105 && ballPosition.Y > 220 && ballPosition.Y < 280)
@@ -208,6 +221,10 @@ _graphics.PreferredBackBufferHeight / 2);
 
             DrawHead();
             DrawTail(1, 0, gameTime);
+            if (dead && (float)gameTime.TotalGameTime.TotalSeconds - timeSinceLastDraw > 1)
+            {
+                DrawGameOver();
+            }
 
             if (berryPickedUp == false)
             {
@@ -224,6 +241,24 @@ _graphics.PreferredBackBufferHeight / 2);
 
         }
 
+        public void DrawGameOver()
+        {
+            SpriteBatch spriteBatch = new SpriteBatch(GraphicsDevice);
+            spriteBatch.Begin();
+            spriteBatch.Draw(
+                gameOverTexture,
+                new Vector2(_graphics.PreferredBackBufferWidth / 2,
+_graphics.PreferredBackBufferHeight / 2),
+                null,
+                Color.White,
+                0f,
+                new Vector2(gameOverTexture.Width / 2, gameOverTexture.Height / 2),
+                Vector2.One,
+                SpriteEffects.None,
+                0f
+                );
+            spriteBatch.End();
+        }
         public void DrawHead()
         {
                 _spriteBatch.Begin();
@@ -241,6 +276,7 @@ _graphics.PreferredBackBufferHeight / 2);
                 _spriteBatch.End();
 
         }
+
         public void DrawTail(int pos, int dir, GameTime gameTime)
         {
             for (int i = 1; i <= numLengths; i++)
