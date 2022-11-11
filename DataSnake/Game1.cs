@@ -340,7 +340,7 @@ _graphics.PreferredBackBufferHeight / 2);
                 }
             }
 
-            if (berryPickedUp == false && ballPosition.X > (berX - 25) && ballPosition.X < (berX + 25) && ballPosition.Y > (berY - 25) && ballPosition.Y < (berY + 25) && !dead && !paused)
+            if (berryPickedUp == false && ballPosition.X > (berX - 5) && ballPosition.X < (berX + 35) && ballPosition.Y > (berY - 5) && ballPosition.Y < (berY + 40) && !dead && !paused)
             {
                 timeSinceBerryPickup = (float)gameTime.TotalGameTime.TotalSeconds;
                 berryPickedUp = true;
