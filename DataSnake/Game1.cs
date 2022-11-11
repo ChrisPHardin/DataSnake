@@ -246,9 +246,9 @@ _graphics.PreferredBackBufferHeight / 2);
 
             var kstate = Keyboard.GetState();
 
-            if (kstate.IsKeyDown(Keys.Up) && curDirection != 2)
+            if (kstate.IsKeyDown(Keys.Up) | kstate.IsKeyDown(Keys.W))
             {
-                if (!downPressed && !leftPressed && !rightPressed)
+                if (!downPressed && !leftPressed && !rightPressed && curDirection != 2)
                 {
                     upPressed = true;
                     lastDirection = curDirection;                  
@@ -260,9 +260,9 @@ _graphics.PreferredBackBufferHeight / 2);
                 upPressed = false;
             }
 
-            if (kstate.IsKeyDown(Keys.Down) && curDirection != 1)
+            if (kstate.IsKeyDown(Keys.Down) | kstate.IsKeyDown(Keys.S))
             {
-                if (!upPressed && !leftPressed && !rightPressed)
+                if (!upPressed && !leftPressed && !rightPressed && curDirection != 1)
                 {
                     downPressed = true;
                     lastDirection = curDirection;
@@ -274,9 +274,9 @@ _graphics.PreferredBackBufferHeight / 2);
                 downPressed = false;
             }
 
-            if (kstate.IsKeyDown(Keys.Left) && curDirection != 4)
+            if (kstate.IsKeyDown(Keys.Left) | kstate.IsKeyDown(Keys.A))
             {
-                if (!upPressed && !downPressed && !rightPressed)
+                if (!upPressed && !downPressed && !rightPressed && curDirection != 4)
                 {
                     leftPressed = true;
                     lastDirection = curDirection;
@@ -288,7 +288,7 @@ _graphics.PreferredBackBufferHeight / 2);
                 leftPressed = false;
             }
 
-            if (kstate.IsKeyDown(Keys.Right))
+            if (kstate.IsKeyDown(Keys.Right) | kstate.IsKeyDown(Keys.D))
             {
                 if (!downPressed && !leftPressed && !upPressed && curDirection != 3)
                 {
