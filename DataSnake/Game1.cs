@@ -11,6 +11,7 @@ using System.Threading.Tasks.Sources;
 using Microsoft.VisualBasic;
 using static System.Net.Mime.MediaTypeNames;
 using System.Linq;
+using System.Resources;
 
 namespace DataSnake
 {
@@ -30,9 +31,11 @@ namespace DataSnake
         int berY;
         int splitFactor = 10;
         int pageNum = 0;
+
         //1 = Up, 2 = Down, 3 = Left, 4 = Right 
         int curDirection = 4;
         int lastDirection = 4;
+
         int trailCount = 0;
         int numLengths = 0;
         float ballSpeed = 100f;
@@ -65,7 +68,10 @@ namespace DataSnake
         private SpriteBatch _pauseSprite;
         private SpriteBatch _gameOverSprite;
 
-        Resources _resources = new Resources();
+        private Resources<SoundEffect> _sfxLoad = new();
+        private Resources<Texture2D> _texLoad = new();
+        private Resources<Song> _songLoad = new();
+        private Resources<SpriteFont> _fontLoad = new();
 
         public Game1()
         {
@@ -84,7 +90,7 @@ _graphics.PreferredBackBufferHeight / 2);
             WriteToLog("Game initialized.");
         }
 
-        public static void WriteToLog(string logData)
+        private static void WriteToLog(string logData)
         {
             if (!File.Exists("log.txt"))
             {
@@ -97,38 +103,34 @@ _graphics.PreferredBackBufferHeight / 2);
             else
             {
                 using StreamWriter file = new("log.txt", append: true);
-                file.WriteLineAsync(DateAndTime.Now + " - " + logData);
+                file.WriteLine(DateAndTime.Now + " - " + logData);
             }
         }
 
-        public static void WriteScore(int score)
+        private static void WriteScore(int score)
         {
             string text = score.ToString();
-            File.WriteAllTextAsync("highscore.txt", text);
+            File.WriteAllText("highscore.txt", text);
             WriteToLog("High score " + text + " written to file " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\highscore.txt");
         }
 
-        public static int ReadScore()
+        private static int ReadScore()
         {
             if (!File.Exists("highscore.txt"))
             {
-                using (StreamWriter sw = File.CreateText("highscore.txt"))
-                {
-                    sw.WriteLine("0");
-                    WriteToLog("High score file created with 0 value at " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\highscore.txt");
-                    return 0;
-                }
+                using StreamWriter sw = File.CreateText("highscore.txt");
+                sw.WriteLine("0");
+                WriteToLog("High score file created with 0 value at " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\highscore.txt");
+                return 0;
             } 
             else
             {
-                using (StreamReader sr = File.OpenText("highscore.txt"))
+                using StreamReader sr = File.OpenText("highscore.txt");
+                string s;
+                while ((s = sr.ReadLine()) != null)
                 {
-                    string s;
-                    while ((s = sr.ReadLine()) != null)
-                    {
-                        WriteToLog("High score " + s + " read from file " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\highscore.txt");
-                        return Int32.Parse(s);
-                    }
+                    WriteToLog("High score " + s + " read from file " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\highscore.txt");
+                    return Int32.Parse(s);
                 }
             }
 
@@ -149,27 +151,27 @@ _graphics.PreferredBackBufferHeight / 2);
             _logBatch = new SpriteBatch(GraphicsDevice);
 
             //Textures
-            ballTexture = _resources.LoadTexture("ball", this);
-            berryTexture = _resources.LoadTexture("berry", this);
-            gameOverTexture = _resources.LoadTexture("gameover", this);
-            pauseTexture = _resources.LoadTexture("paused", this);
+            ballTexture = _texLoad.LoadContent("ball", this);
+            berryTexture = _texLoad.LoadContent("berry", this);
+            gameOverTexture = _texLoad.LoadContent("gameover", this);
+            pauseTexture = _texLoad.LoadContent("paused", this);
 
             //SFX
-            soundEffects.Add(_resources.LoadSFX("pickup", this));
-            soundEffects.Add(_resources.LoadSFX("diesfx", this));
-            soundEffects.Add(_resources.LoadSFX("sm64_pause", this));
-            soundEffects.Add(_resources.LoadSFX("unpause", this));
+            soundEffects.Add(_sfxLoad.LoadContent("pickup", this));
+            soundEffects.Add(_sfxLoad.LoadContent("diesfx", this));
+            soundEffects.Add(_sfxLoad.LoadContent("sm64_pause", this));
+            soundEffects.Add(_sfxLoad.LoadContent("unpause", this));
 
             //Music
-            this.gameOverMus = _resources.LoadSong("gameoversfx", this);
+            this.gameOverMus = _songLoad.LoadContent("gameoversfx", this);
 
             //Font
-            scoreFont = _resources.LoadFont("defaultfont", this);
+            scoreFont = _fontLoad.LoadContent("defaultfont", this);
         }
 
         protected override void Update(GameTime gameTime)
         {
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Start == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
             {
                 if (!paused && !dead && !restarting && !drawingLog && ((float)gameTime.TotalGameTime.TotalSeconds - timeSinceUnpaused > 0.5)) { paused = true; soundEffects[2].Play(); WriteToLog("Game paused."); }
                 else if (dead && !restarting && !drawingLog) { Restart(gameTime); }
@@ -186,9 +188,9 @@ _graphics.PreferredBackBufferHeight / 2);
                 }
             }
 
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Start == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.F4))
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.F4))
             {
-                if (dead | paused) { WriteToLog("Game exiting with F4."); Exit(); }
+                if (dead | paused) { WriteToLog("Game exiting with F4 or back button."); Exit(); }
             }
 
             if (GamePad.GetState(PlayerIndex.One).Buttons.RightShoulder == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.F1))
@@ -246,7 +248,7 @@ _graphics.PreferredBackBufferHeight / 2);
 
             var kstate = Keyboard.GetState();
 
-            if (kstate.IsKeyDown(Keys.Up) | kstate.IsKeyDown(Keys.W))
+            if (kstate.IsKeyDown(Keys.Up) || kstate.IsKeyDown(Keys.W) || GamePad.GetState(PlayerIndex.One).DPad.Up == ButtonState.Pressed)
             {
                 if (!downPressed && !leftPressed && !rightPressed && curDirection != 2)
                 {
@@ -260,7 +262,7 @@ _graphics.PreferredBackBufferHeight / 2);
                 upPressed = false;
             }
 
-            if (kstate.IsKeyDown(Keys.Down) | kstate.IsKeyDown(Keys.S))
+            if (kstate.IsKeyDown(Keys.Down) || kstate.IsKeyDown(Keys.S) || GamePad.GetState(PlayerIndex.One).DPad.Down == ButtonState.Pressed)
             {
                 if (!upPressed && !leftPressed && !rightPressed && curDirection != 1)
                 {
@@ -274,7 +276,7 @@ _graphics.PreferredBackBufferHeight / 2);
                 downPressed = false;
             }
 
-            if (kstate.IsKeyDown(Keys.Left) | kstate.IsKeyDown(Keys.A))
+            if (kstate.IsKeyDown(Keys.Left) || kstate.IsKeyDown(Keys.A) || GamePad.GetState(PlayerIndex.One).DPad.Left == ButtonState.Pressed)
             {
                 if (!upPressed && !downPressed && !rightPressed && curDirection != 4)
                 {
@@ -288,7 +290,7 @@ _graphics.PreferredBackBufferHeight / 2);
                 leftPressed = false;
             }
 
-            if (kstate.IsKeyDown(Keys.Right) | kstate.IsKeyDown(Keys.D))
+            if (kstate.IsKeyDown(Keys.Right) || kstate.IsKeyDown(Keys.D) || GamePad.GetState(PlayerIndex.One).DPad.Right == ButtonState.Pressed)
             {
                 if (!downPressed && !leftPressed && !upPressed && curDirection != 3)
                 {
@@ -460,7 +462,7 @@ _graphics.PreferredBackBufferHeight / 2);
             base.Draw(gameTime);
         }
 
-        public void Die()
+        private void Die()
         {
             dead = true;
             WriteToLog("Player died with score " + score.ToString());
@@ -474,7 +476,7 @@ _graphics.PreferredBackBufferHeight / 2);
             
         }
 
-        public void Restart(GameTime gameTime)
+        private void Restart(GameTime gameTime)
         {
             WriteToLog("Game restarting.");
             restarting = true;
@@ -503,7 +505,7 @@ _graphics.PreferredBackBufferHeight / 2);
             base.Initialize();
         }
 
-        public void GenBerryPos()
+        private void GenBerryPos()
         {
             Random berryRnd = new Random();
             berX = berryRnd.Next(1, _graphics.PreferredBackBufferWidth - 50);
@@ -511,7 +513,7 @@ _graphics.PreferredBackBufferHeight / 2);
             WriteToLog("Berry getting generated at X: " + berX.ToString() + " Y: " + berY.ToString());
         }
 
-        public void DrawGameOver()
+        private void DrawGameOver()
         {
             _gameOverSprite.Begin();
             _gameOverSprite.Draw(
@@ -528,7 +530,7 @@ _graphics.PreferredBackBufferHeight / 2),
                 );
             _gameOverSprite.End();
         }
-        public void DrawPaused()
+        private void DrawPaused()
         {
             _pauseSprite.Begin();
             _pauseSprite.Draw(
@@ -546,7 +548,7 @@ _graphics.PreferredBackBufferHeight / 2),
             _pauseSprite.End();
         }
 
-        public void DrawHead()
+        private void DrawHead()
         {
             _spriteBatch.Begin();
             _spriteBatch.Draw(
@@ -564,7 +566,7 @@ _graphics.PreferredBackBufferHeight / 2),
 
         }
 
-        public void DrawTail()
+        private void DrawTail()
         {
             for (int i = 1; i <= numLengths; i++)
             {
