@@ -5,6 +5,12 @@ using Microsoft.Xna.Framework.Media;
 using Microsoft.Xna.Framework.Audio;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.IO;
+using System.Threading.Tasks.Sources;
+using Microsoft.VisualBasic;
+using static System.Net.Mime.MediaTypeNames;
+using System.Linq;
 
 namespace DataSnake
 {
@@ -19,9 +25,11 @@ namespace DataSnake
         Vector2 ballPosition;
         Vector2 lengthPosition;
         int score;
+        int highScore;
         int berX;
         int berY;
         int splitFactor = 10;
+        int pageNum = 0;
         //1 = Up, 2 = Down, 3 = Left, 4 = Right 
         int curDirection = 4;
         int lastDirection = 4;
@@ -32,6 +40,7 @@ namespace DataSnake
         float timeSinceLastDraw = 0;
         float timeSinceBerryPickup = 0;
         float timeSinceUnpaused = 0;
+        float spaceSlowdown = 0;
         List<Vector2> trailPos = new List<Vector2>();
         List<SoundEffect> soundEffects = new List<SoundEffect>();
         Song gameOverMus;
@@ -43,11 +52,14 @@ namespace DataSnake
         bool dead = false;
         bool paused;
         bool restarting;
+        bool drawingLog;
+        bool lineEnded;
 
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private SpriteBatch _berryBatch;
         private SpriteBatch _scoreBatch;
+        private SpriteBatch _logBatch;
         private SpriteBatch _highScoreBatch;
         private SpriteBatch _snakeTail;
         private SpriteBatch _pauseSprite;
@@ -66,9 +78,62 @@ namespace DataSnake
         {
             ballPosition = new Vector2(_graphics.PreferredBackBufferWidth / 2,
 _graphics.PreferredBackBufferHeight / 2);
-
+            highScore = ReadScore();
             GenBerryPos();
             base.Initialize();
+            WriteToLog("Game initialized.");
+        }
+
+        public static void WriteToLog(string logData)
+        {
+            if (!File.Exists("log.txt"))
+            {
+                using (StreamWriter sw = File.CreateText("log.txt"))
+                {
+                    sw.WriteLine(DateAndTime.Now + " - Log file created at " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\log.txt");
+                    sw.WriteLine(DateAndTime.Now + " - " + logData);
+                }
+            }
+            else
+            {
+                using StreamWriter file = new("log.txt", append: true);
+                file.WriteLineAsync(DateAndTime.Now + " - " + logData);
+            }
+        }
+
+        public static void WriteScore(int score)
+        {
+            string text = score.ToString();
+            File.WriteAllTextAsync("highscore.txt", text);
+            WriteToLog("High score " + text + " written to file " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\highscore.txt");
+        }
+
+        public static int ReadScore()
+        {
+            if (!File.Exists("highscore.txt"))
+            {
+                using (StreamWriter sw = File.CreateText("highscore.txt"))
+                {
+                    sw.WriteLine("0");
+                    WriteToLog("High score file created with 0 value at " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\highscore.txt");
+                    return 0;
+                }
+            } 
+            else
+            {
+                using (StreamReader sr = File.OpenText("highscore.txt"))
+                {
+                    string s;
+                    while ((s = sr.ReadLine()) != null)
+                    {
+                        WriteToLog("High score " + s + " read from file " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\highscore.txt");
+                        return Int32.Parse(s);
+                    }
+                }
+            }
+
+            WriteToLog("Unexpected code path in ReadScore method, returning 0.");
+            return 0;
         }
 
         protected override void LoadContent()
@@ -81,6 +146,7 @@ _graphics.PreferredBackBufferHeight / 2);
             _snakeTail = new SpriteBatch(GraphicsDevice);
             _pauseSprite = new SpriteBatch(GraphicsDevice);
             _gameOverSprite = new SpriteBatch(GraphicsDevice);
+            _logBatch = new SpriteBatch(GraphicsDevice);
 
             //Textures
             ballTexture = _resources.LoadTexture("ball", this);
@@ -105,17 +171,63 @@ _graphics.PreferredBackBufferHeight / 2);
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
             {
-                if (!paused && !dead && !restarting && ((float)gameTime.TotalGameTime.TotalSeconds - timeSinceUnpaused > 0.5)) { paused = true; soundEffects[2].Play(); }
-                else if (dead && !restarting) { Restart(gameTime); }
+                if (!paused && !dead && !restarting && !drawingLog && ((float)gameTime.TotalGameTime.TotalSeconds - timeSinceUnpaused > 0.5)) { paused = true; soundEffects[2].Play(); WriteToLog("Game paused."); }
+                else if (dead && !restarting && !drawingLog) { Restart(gameTime); }
                 else
                 {
-                    if ((float)gameTime.TotalGameTime.TotalSeconds - timeSinceLastDraw > 0.5 && !dead)
+                    if ((float)gameTime.TotalGameTime.TotalSeconds - timeSinceLastDraw > 0.5 && !dead && !restarting && !drawingLog)
                     {
                         paused = false;
+                        WriteToLog("Game unpaused.");
                         soundEffects[3].Play();
                         timeSinceUnpaused = (float)gameTime.TotalGameTime.TotalSeconds;
                     }
 
+                }
+            }
+
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Start == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.F4))
+            {
+                if (dead | paused) { WriteToLog("Game exiting with F4."); Exit(); }
+            }
+
+            if (GamePad.GetState(PlayerIndex.One).Buttons.RightShoulder == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.F1))
+            {
+                if ((dead | paused) && !drawingLog && ((float)gameTime.TotalGameTime.TotalSeconds - timeSinceUnpaused > 0.5)) 
+                { 
+                    WriteToLog("Displaying log.");
+                    timeSinceUnpaused = (float)gameTime.TotalGameTime.TotalSeconds;
+                    drawingLog = true; 
+                }
+                else if (drawingLog == true && (float)gameTime.TotalGameTime.TotalSeconds - timeSinceUnpaused > 0.5)
+                {
+                    timeSinceUnpaused = (float)gameTime.TotalGameTime.TotalSeconds;
+                    pageNum = 0;
+                    drawingLog = false;
+                }
+            }
+
+            if (GamePad.GetState(PlayerIndex.One).Buttons.A == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Space))
+            {
+                if (drawingLog == true)
+                {
+                    if (spaceSlowdown == 0)
+                    {
+                        spaceSlowdown = (float)gameTime.TotalGameTime.TotalSeconds;
+                    }
+                    else if ((float) gameTime.TotalGameTime.TotalSeconds - spaceSlowdown > 0.2)
+                    {
+                        spaceSlowdown = (float)gameTime.TotalGameTime.TotalSeconds;
+                        if (!lineEnded)
+                        {
+                            pageNum++;
+                        }
+                        else
+                        {
+                            pageNum = 0;
+                            lineEnded = false;
+                        }
+                    }
                 }
             }
 
@@ -127,6 +239,11 @@ _graphics.PreferredBackBufferHeight / 2);
                 }
             }
 
+            if (score > highScore)
+            {
+                highScore = score;
+            }
+
             var kstate = Keyboard.GetState();
 
             if (kstate.IsKeyDown(Keys.Up) && curDirection != 2)
@@ -134,7 +251,7 @@ _graphics.PreferredBackBufferHeight / 2);
                 if (!downPressed && !leftPressed && !rightPressed)
                 {
                     upPressed = true;
-                    lastDirection =curDirection;                  
+                    lastDirection = curDirection;                  
                     curDirection = 1;
                 }
             }
@@ -263,34 +380,35 @@ _graphics.PreferredBackBufferHeight / 2);
                         splitFactor = 9;                        
                     }
                 }
-
-
-                if (score < 10)
-                {
-                   
-                }
             }
-
-
             base.Update(gameTime);
         }
 
         protected override void Draw(GameTime gameTime)
         {
             _graphics.GraphicsDevice.Clear(Color.Black);
-            DrawHead();
-            DrawTail();
+            if (!paused)
+            {
+                DrawHead();
+                DrawTail();
+            }
+            else
+            {
+                if (!drawingLog)
+                {
+                    DrawPaused();
+                }
+            }
+
             if (dead && (float)gameTime.TotalGameTime.TotalSeconds - timeSinceLastDraw > 1)
             {
-                DrawGameOver();
+                if (!drawingLog)
+                {
+                    DrawGameOver();
+                }
             }
 
-            if (paused)
-            {
-                DrawPaused();
-            }
-
-            if (berryPickedUp == false)
+            if (berryPickedUp == false && !paused)
             {
 
                 _berryBatch.Begin();
@@ -311,8 +429,33 @@ _graphics.PreferredBackBufferHeight / 2);
             _scoreBatch.End();
 
             _highScoreBatch.Begin();
-            _highScoreBatch.DrawString(scoreFont, "High Score: " + score, new Vector2(10, 30), Color.White);
+            _highScoreBatch.DrawString(scoreFont, "High Score: " + highScore, new Vector2(10, 30), Color.White);
             _highScoreBatch.End();
+
+            if (drawingLog == true)
+            {
+                _logBatch.Begin();
+                string line = "default";
+                int posY = 30;
+
+                for (int i = 1; i < 21; i++)
+                {
+                    line = File.ReadLines("log.txt").ElementAtOrDefault((pageNum * 20) + i - 1);
+                    posY += 20;
+                    if (line == null) 
+                    {
+                        lineEnded = true;
+                        _logBatch.DrawString(scoreFont, "End of log reached.", new Vector2(10, posY), Color.White);
+                        i = 20;
+                    }
+                    else
+                    {
+                        _logBatch.DrawString(scoreFont, line, new Vector2(10, posY), Color.White);
+                    }
+                }
+                _logBatch.DrawString(scoreFont, "Press space to continue.", new Vector2(10, posY + 20), Color.White);
+                _logBatch.End();
+            }
 
             base.Draw(gameTime);
         }
@@ -320,12 +463,20 @@ _graphics.PreferredBackBufferHeight / 2);
         public void Die()
         {
             dead = true;
+            WriteToLog("Player died with score " + score.ToString());
             soundEffects[1].Play();
             MediaPlayer.Play(gameOverMus);
+            int currentHighScore = ReadScore();
+            if (currentHighScore < score)
+            {
+                WriteScore(score);
+            }
+            
         }
 
         public void Restart(GameTime gameTime)
         {
+            WriteToLog("Game restarting.");
             restarting = true;
             score = 0;
             splitFactor = 10;
@@ -357,6 +508,7 @@ _graphics.PreferredBackBufferHeight / 2);
             Random berryRnd = new Random();
             berX = berryRnd.Next(1, _graphics.PreferredBackBufferWidth - 50);
             berY = berryRnd.Next(1, _graphics.PreferredBackBufferHeight - 50);
+            WriteToLog("Berry getting generated at X: " + berX.ToString() + " Y: " + berY.ToString());
         }
 
         public void DrawGameOver()
