@@ -5,7 +5,6 @@ using Microsoft.Xna.Framework.Media;
 using Microsoft.Xna.Framework.Audio;
 using System;
 using System.Collections.Generic;
-using System.Security.AccessControl;
 
 namespace DataSnake
 {
@@ -17,95 +16,99 @@ namespace DataSnake
         Texture2D gameOverTexture;
         Texture2D pauseTexture;
         SpriteFont scoreFont;
-        int score;
         Vector2 ballPosition;
         Vector2 lengthPosition;
-        bool paused;
+        int score;
         int berX;
         int berY;
-        int splitFactor;
-        float ballSpeed;
-        float speedTime;
+        int splitFactor = 10;
+        //1 = Up, 2 = Down, 3 = Left, 4 = Right 
+        int curDirection = 4;
+        int lastDirection = 4;
+        int trailCount = 0;
+        int numLengths = 0;
+        float ballSpeed = 100f;
+        float speedTime = 0.015f;
         float timeSinceLastDraw = 0;
         float timeSinceBerryPickup = 0;
         float timeSinceUnpaused = 0;
         List<Vector2> trailPos = new List<Vector2>();
         List<SoundEffect> soundEffects = new List<SoundEffect>();
         Song gameOverMus;
-        int trailCount = 0;
-        int turnCount = 0;
         bool berryPickedUp = false;
         bool upPressed;
         bool downPressed;
         bool leftPressed;
         bool rightPressed;
         bool dead = false;
-
-
-        //1 = Up, 2 = Down, 3 = Left, 4 = Right 
-        int curDirection = 4;
-        //int[] lastDirection = new int[100];
-        int lastDirection = 4;
-
-        int numLengths = 0;
+        bool paused;
+        bool restarting;
 
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private SpriteBatch _berryBatch;
         private SpriteBatch _scoreBatch;
+        private SpriteBatch _highScoreBatch;
+        private SpriteBatch _snakeTail;
+        private SpriteBatch _pauseSprite;
+        private SpriteBatch _gameOverSprite;
+
+        Resources _resources = new Resources();
 
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
-            
         }
 
         protected override void Initialize()
         {
-            // TODO: Add your initialization logic here
             ballPosition = new Vector2(_graphics.PreferredBackBufferWidth / 2,
 _graphics.PreferredBackBufferHeight / 2);
-            ballSpeed = 100f;
-            speedTime = 0.015f;
-            splitFactor = 10;
+
             GenBerryPos();
             base.Initialize();
         }
 
         protected override void LoadContent()
         {
+            //Initialize Sprite Batches
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             _berryBatch = new SpriteBatch(GraphicsDevice);
             _scoreBatch = new SpriteBatch(GraphicsDevice);
+            _highScoreBatch = new SpriteBatch(GraphicsDevice);
+            _snakeTail = new SpriteBatch(GraphicsDevice);
+            _pauseSprite = new SpriteBatch(GraphicsDevice);
+            _gameOverSprite = new SpriteBatch(GraphicsDevice);
 
-            // TODO: use this.Content to load your game content here
             //Textures
-            ballTexture = Content.Load<Texture2D>("ball");
-            berryTexture = Content.Load<Texture2D>("berry");
-            gameOverTexture = Content.Load<Texture2D>("gameover");
-            pauseTexture = Content.Load<Texture2D>("paused");
+            ballTexture = _resources.LoadTexture("ball", this);
+            berryTexture = _resources.LoadTexture("berry", this);
+            gameOverTexture = _resources.LoadTexture("gameover", this);
+            pauseTexture = _resources.LoadTexture("paused", this);
 
             //SFX
-            soundEffects.Add(Content.Load<SoundEffect>("pickup"));
-            soundEffects.Add(Content.Load<SoundEffect>("diesfx"));
-            soundEffects.Add(Content.Load<SoundEffect>("sm64_pause"));
-            soundEffects.Add(Content.Load<SoundEffect>("unpause"));
+            soundEffects.Add(_resources.LoadSFX("pickup", this));
+            soundEffects.Add(_resources.LoadSFX("diesfx", this));
+            soundEffects.Add(_resources.LoadSFX("sm64_pause", this));
+            soundEffects.Add(_resources.LoadSFX("unpause", this));
 
             //Music
-            this.gameOverMus = Content.Load<Song>("gameoversfx");
+            this.gameOverMus = _resources.LoadSong("gameoversfx", this);
 
             //Font
-            scoreFont = Content.Load<SpriteFont>("defaultfont");
+            scoreFont = _resources.LoadFont("defaultfont", this);
         }
 
         protected override void Update(GameTime gameTime)
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
             {
-                if (!paused && !dead && ((float)gameTime.TotalGameTime.TotalSeconds - timeSinceUnpaused > 0.5)) { paused = true; soundEffects[2].Play(); } else 
-                { 
+                if (!paused && !dead && !restarting && ((float)gameTime.TotalGameTime.TotalSeconds - timeSinceUnpaused > 0.5)) { paused = true; soundEffects[2].Play(); }
+                else if (dead && !restarting) { Restart(gameTime); }
+                else
+                {
                     if ((float)gameTime.TotalGameTime.TotalSeconds - timeSinceLastDraw > 0.5 && !dead)
                     {
                         paused = false;
@@ -114,15 +117,16 @@ _graphics.PreferredBackBufferHeight / 2);
                     }
 
                 }
-                //numLengths = 60;
-                //score = 60;
-                //ballSpeed = 400f;
-                //splitFactor = 4;
-                //ballPosition = new Vector2(_graphics.PreferredBackBufferWidth / 2,
-                // _graphics.PreferredBackBufferHeight / 2);
             }
 
-            // TODO: Add your update logic here
+            if (restarting)
+            {
+                if ((float)gameTime.TotalGameTime.TotalSeconds - timeSinceUnpaused > 0.5)
+                {
+                    restarting = false;
+                }
+            }
+
             var kstate = Keyboard.GetState();
 
             if (kstate.IsKeyDown(Keys.Up) && curDirection != 2)
@@ -130,12 +134,9 @@ _graphics.PreferredBackBufferHeight / 2);
                 if (!downPressed && !leftPressed && !rightPressed)
                 {
                     upPressed = true;
-                    //lastDirection[turnCount] = curDirection;
                     lastDirection =curDirection;                  
                     curDirection = 1;
-                    turnCount++;
                 }
-                //ballPosition.Y -= ballSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds;
             }
             else
             {
@@ -147,12 +148,9 @@ _graphics.PreferredBackBufferHeight / 2);
                 if (!upPressed && !leftPressed && !rightPressed)
                 {
                     downPressed = true;
-                    //lastDirection[turnCount] = curDirection;
                     lastDirection = curDirection;
                     curDirection = 2;
-                    turnCount++;
                 }
-                //ballPosition.Y += ballSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds;
             }
             else
             {
@@ -164,12 +162,9 @@ _graphics.PreferredBackBufferHeight / 2);
                 if (!upPressed && !downPressed && !rightPressed)
                 {
                     leftPressed = true;
-                    //lastDirection[turnCount] = curDirection;
                     lastDirection = curDirection;
                     curDirection = 3;
-                    turnCount++;
                 }
-                //ballPosition.X -= ballSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds;
             }
             else
             {
@@ -181,12 +176,9 @@ _graphics.PreferredBackBufferHeight / 2);
                 if (!downPressed && !leftPressed && !upPressed && curDirection != 3)
                 {
                     rightPressed = true;
-                    //lastDirection[turnCount] = curDirection;
                     lastDirection = curDirection;
                     curDirection = 4;
-                    turnCount++;
                 }
-                //ballPosition.X += ballSpeed * (float)gameTime.ElapsedGameTime.TotalSeconds;
             }
             else
             {
@@ -285,12 +277,9 @@ _graphics.PreferredBackBufferHeight / 2);
 
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.Black);
-
-            // TODO: Add your drawing code here
-
+            _graphics.GraphicsDevice.Clear(Color.Black);
             DrawHead();
-            DrawTail(1, 0, gameTime);
+            DrawTail();
             if (dead && (float)gameTime.TotalGameTime.TotalSeconds - timeSinceLastDraw > 1)
             {
                 DrawGameOver();
@@ -303,7 +292,7 @@ _graphics.PreferredBackBufferHeight / 2);
 
             if (berryPickedUp == false)
             {
-                
+
                 _berryBatch.Begin();
                 _berryBatch.Draw(berryTexture, new Vector2(berX, berY), null, Color.White);
                 _berryBatch.End();
@@ -321,12 +310,11 @@ _graphics.PreferredBackBufferHeight / 2);
             _scoreBatch.DrawString(scoreFont, "Score: " + score, new Vector2(10, 10), Color.White);
             _scoreBatch.End();
 
+            _highScoreBatch.Begin();
+            _highScoreBatch.DrawString(scoreFont, "High Score: " + score, new Vector2(10, 30), Color.White);
+            _highScoreBatch.End();
+
             base.Draw(gameTime);
-        }
-
-        public void spawnSnakePiece(int pos)
-        {
-
         }
 
         public void Die()
@@ -334,6 +322,34 @@ _graphics.PreferredBackBufferHeight / 2);
             dead = true;
             soundEffects[1].Play();
             MediaPlayer.Play(gameOverMus);
+        }
+
+        public void Restart(GameTime gameTime)
+        {
+            restarting = true;
+            score = 0;
+            splitFactor = 10;
+            curDirection = 4;
+            lastDirection = 4;
+            trailCount = 0;
+            numLengths = 0;
+            ballSpeed = 100f;
+            speedTime = 0.015f;
+            timeSinceLastDraw = 0;
+            timeSinceBerryPickup = 0;
+            timeSinceUnpaused = (float)gameTime.TotalGameTime.TotalSeconds;
+            trailPos = new List<Vector2>();
+            berryPickedUp = false;
+            upPressed = false;
+            downPressed = false;
+            leftPressed = false;
+            rightPressed = false;
+            dead = false;
+            MediaPlayer.Stop();
+            ballPosition = new Vector2(_graphics.PreferredBackBufferWidth / 2,
+_graphics.PreferredBackBufferHeight / 2);
+            GenBerryPos();
+            base.Initialize();
         }
 
         public void GenBerryPos()
@@ -345,9 +361,8 @@ _graphics.PreferredBackBufferHeight / 2);
 
         public void DrawGameOver()
         {
-            SpriteBatch spriteBatch = new SpriteBatch(GraphicsDevice);
-            spriteBatch.Begin();
-            spriteBatch.Draw(
+            _gameOverSprite.Begin();
+            _gameOverSprite.Draw(
                 gameOverTexture,
                 new Vector2(_graphics.PreferredBackBufferWidth / 2,
 _graphics.PreferredBackBufferHeight / 2),
@@ -359,13 +374,12 @@ _graphics.PreferredBackBufferHeight / 2),
                 SpriteEffects.None,
                 0f
                 );
-            spriteBatch.End();
+            _gameOverSprite.End();
         }
         public void DrawPaused()
         {
-            SpriteBatch spriteBatch = new SpriteBatch(GraphicsDevice);
-            spriteBatch.Begin();
-            spriteBatch.Draw(
+            _pauseSprite.Begin();
+            _pauseSprite.Draw(
                 pauseTexture,
                 new Vector2(_graphics.PreferredBackBufferWidth / 2,
 _graphics.PreferredBackBufferHeight / 2),
@@ -377,13 +391,13 @@ _graphics.PreferredBackBufferHeight / 2),
                 SpriteEffects.None,
                 0f
                 );
-            spriteBatch.End();
+            _pauseSprite.End();
         }
 
         public void DrawHead()
         {
-                _spriteBatch.Begin();
-                _spriteBatch.Draw(
+            _spriteBatch.Begin();
+            _spriteBatch.Draw(
                     ballTexture,
                     ballPosition,
                     null,
@@ -394,15 +408,14 @@ _graphics.PreferredBackBufferHeight / 2),
                     SpriteEffects.None,
                     0f
                     );
-                _spriteBatch.End();
+            _spriteBatch.End();
 
         }
 
-        public void DrawTail(int pos, int dir, GameTime gameTime)
+        public void DrawTail()
         {
             for (int i = 1; i <= numLengths; i++)
             {
-                SpriteBatch snakeTail = new SpriteBatch(GraphicsDevice);
                 if (trailCount < 5)
                 {
                     if (lastDirection == 1)
@@ -440,8 +453,8 @@ _graphics.PreferredBackBufferHeight / 2),
                         Die();
                     }
                 }
-                snakeTail.Begin();
-                snakeTail.Draw(
+                _snakeTail.Begin();
+                _snakeTail.Draw(
                         ballTexture,
                         lengthPosition,
                         null,
@@ -452,7 +465,7 @@ _graphics.PreferredBackBufferHeight / 2),
                         SpriteEffects.None,
                         0f
                     );
-                snakeTail.End();
+                _snakeTail.End();
 
                 }
 
