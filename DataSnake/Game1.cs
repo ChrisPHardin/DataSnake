@@ -21,6 +21,8 @@ namespace DataSnake
         static ScoreContext db = new ScoreContext();
 
         Texture2D ballTexture;
+        Texture2D headHorizTexture;
+        Texture2D headVertTexture;
         Texture2D berryTexture;
         Texture2D gameOverTexture;
         Texture2D pauseTexture;
@@ -128,6 +130,8 @@ _graphics.PreferredBackBufferHeight / 2);
             _logBatch = new SpriteBatch(GraphicsDevice);
 
             //Textures
+            headHorizTexture = _texLoad.LoadContent("head1", this);
+            headVertTexture = _texLoad.LoadContent("head2", this);
             ballTexture = _texLoad.LoadContent("ball", this);
             berryTexture = _texLoad.LoadContent("berry", this);
             gameOverTexture = _texLoad.LoadContent("gameover", this);
@@ -517,7 +521,7 @@ _graphics.PreferredBackBufferHeight / 2);
                         _logBatch.DrawString(scoreFont, line, new Vector2(10, posY), Color.White);
                     }
                 }
-                _logBatch.DrawString(scoreFont, "Press space to continue.", new Vector2(10, posY + 20), Color.White);
+                _logBatch.DrawString(scoreFont, "Press space to continue or F1 to exit log menu.", new Vector2(10, posY + 20), Color.White);
                 _logBatch.End();
             }
 
@@ -562,8 +566,11 @@ _graphics.PreferredBackBufferHeight / 2),
         private void DrawHead()
         {
             _spriteBatch.Begin();
-            _spriteBatch.Draw(
-                    ballTexture,
+            //1 = Up, 2 = Down, 3 = Left, 4 = Right 
+            if (curDirection == 4)
+            {
+                _spriteBatch.Draw(
+                    headHorizTexture,
                     ballPosition,
                     null,
                     Color.White,
@@ -573,6 +580,49 @@ _graphics.PreferredBackBufferHeight / 2),
                     SpriteEffects.None,
                     0f
                     );
+            }
+            else if (curDirection == 3)
+            {
+                _spriteBatch.Draw(
+                    headHorizTexture,
+                    ballPosition,
+                    null,
+                    Color.White,
+                    0f,
+                    new Vector2(ballTexture.Width / 2, ballTexture.Height / 2),
+                    Vector2.One,
+                    SpriteEffects.FlipHorizontally,
+                    0f
+                    );
+            }
+            else if (curDirection == 2)
+            {
+                _spriteBatch.Draw(
+                    headVertTexture,
+                    ballPosition,
+                    null,
+                    Color.White,
+                    0f,
+                    new Vector2(ballTexture.Width / 2, ballTexture.Height / 2),
+                    Vector2.One,
+                    SpriteEffects.FlipVertically,
+                    0f
+                    );
+            }
+            else if (curDirection == 1)
+            {
+                _spriteBatch.Draw(
+                    headVertTexture,
+                    ballPosition,
+                    null,
+                    Color.White,
+                    0f,
+                    new Vector2(ballTexture.Width / 2, ballTexture.Height / 2),
+                    Vector2.One,
+                    SpriteEffects.None,
+                    0f
+                    );
+            }
             _spriteBatch.End();
 
         }
