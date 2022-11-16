@@ -12,13 +12,15 @@ using Microsoft.VisualBasic;
 using static System.Net.Mime.MediaTypeNames;
 using System.Linq;
 using System.Resources;
+using System.Reflection.Metadata;
 
 namespace DataSnake
 {
     public class Game1 : Game
     {
+        static ScoreContext db = new ScoreContext();
 
-        Texture2D ballTexture;
+    Texture2D ballTexture;
         Texture2D berryTexture;
         Texture2D gameOverTexture;
         Texture2D pauseTexture;
@@ -73,6 +75,8 @@ namespace DataSnake
         private Resources<Song> _songLoad = new();
         private Resources<SpriteFont> _fontLoad = new();
 
+
+
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -80,64 +84,37 @@ namespace DataSnake
             IsMouseVisible = true;
         }
 
+
         protected override void Initialize()
         {
             ballPosition = new Vector2(_graphics.PreferredBackBufferWidth / 2,
 _graphics.PreferredBackBufferHeight / 2);
+            db.Database.EnsureCreated();
+            bool exists = db.Scores.Any();
+            if (!exists)
+            {
+                db.Add(new Scores { Score = 0, HighScore = 0 });
+                db.SaveChanges();
+            }
             highScore = ReadScore();
             GenBerryPos();
             base.Initialize();
             WriteToLog("Game initialized.");
         }
 
-        private static void WriteToLog(string logData)
+        public static bool CheckTableExists()
         {
-            if (!File.Exists("log.txt"))
+            try
             {
-                using (StreamWriter sw = File.CreateText("log.txt"))
-                {
-                    sw.WriteLine(DateAndTime.Now + " - Log file created at " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\log.txt");
-                    sw.WriteLine(DateAndTime.Now + " - " + logData);
-                }
+                bool exists = !db.Scores.Any();
+                return true;
+
             }
-            else
+            catch (Exception)
             {
-                using StreamWriter file = new("log.txt", append: true);
-                file.WriteLine(DateAndTime.Now + " - " + logData);
+                return false;
             }
         }
-
-        private static void WriteScore(int score)
-        {
-            string text = score.ToString();
-            File.WriteAllText("highscore.txt", text);
-            WriteToLog("High score " + text + " written to file " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\highscore.txt");
-        }
-
-        private static int ReadScore()
-        {
-            if (!File.Exists("highscore.txt"))
-            {
-                using StreamWriter sw = File.CreateText("highscore.txt");
-                sw.WriteLine("0");
-                WriteToLog("High score file created with 0 value at " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\highscore.txt");
-                return 0;
-            } 
-            else
-            {
-                using StreamReader sr = File.OpenText("highscore.txt");
-                string s;
-                while ((s = sr.ReadLine()) != null)
-                {
-                    WriteToLog("High score " + s + " read from file " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\highscore.txt");
-                    return Int32.Parse(s);
-                }
-            }
-
-            WriteToLog("Unexpected code path in ReadScore method, returning 0.");
-            return 0;
-        }
-
         protected override void LoadContent()
         {
             //Initialize Sprite Batches
@@ -385,6 +362,91 @@ _graphics.PreferredBackBufferHeight / 2);
             }
             base.Update(gameTime);
         }
+        private void Die()
+        {
+            dead = true;
+            WriteToLog("Player died with score " + score.ToString());
+            soundEffects[1].Play();
+            MediaPlayer.Play(gameOverMus);
+            int currentHighScore = ReadScore();
+            if (score >= currentHighScore)
+                currentHighScore = score;
+            WriteScore(score, currentHighScore);            
+
+        }
+
+        private void Restart(GameTime gameTime)
+        {
+            WriteToLog("Game restarting.");
+            restarting = true;
+            score = 0;
+            splitFactor = 10;
+            curDirection = 4;
+            lastDirection = 4;
+            trailCount = 0;
+            numLengths = 0;
+            ballSpeed = 100f;
+            speedTime = 0.015f;
+            timeSinceLastDraw = 0;
+            timeSinceBerryPickup = 0;
+            timeSinceUnpaused = (float)gameTime.TotalGameTime.TotalSeconds;
+            trailPos = new List<Vector2>();
+            berryPickedUp = false;
+            upPressed = false;
+            downPressed = false;
+            leftPressed = false;
+            rightPressed = false;
+            dead = false;
+            MediaPlayer.Stop();
+            ballPosition = new Vector2(_graphics.PreferredBackBufferWidth / 2,
+_graphics.PreferredBackBufferHeight / 2);
+            GenBerryPos();
+            base.Initialize();
+        }
+
+        private void GenBerryPos()
+        {
+            Random berryRnd = new Random();
+            berX = berryRnd.Next(1, _graphics.PreferredBackBufferWidth - 50);
+            berY = berryRnd.Next(1, _graphics.PreferredBackBufferHeight - 50);
+            WriteToLog("Berry getting generated at X: " + berX.ToString() + " Y: " + berY.ToString());
+        }
+
+        private static void WriteToLog(string logData)
+        {
+            if (!File.Exists("log.txt"))
+            {
+                using (StreamWriter sw = File.CreateText("log.txt"))
+                {
+                    sw.WriteLine(DateAndTime.Now + " - Log file created at " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\log.txt");
+                    sw.WriteLine(DateAndTime.Now + " - " + logData);
+                }
+            }
+            else
+            {
+                using StreamWriter file = new("log.txt", append: true);
+                file.WriteLine(DateAndTime.Now + " - " + logData);
+            }
+        }
+
+        private static void WriteScore(int score, int highscore)
+        {
+            db.Add(new Scores { Score = score, HighScore = highscore });
+            db.SaveChanges();
+            string text = score.ToString();
+            WriteToLog("High score " + text + " written to database " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\scores.db");
+        }
+
+        private static int ReadScore()
+        {
+
+            var score = db.Scores
+                .OrderBy(b => b.Id)
+                .Last()
+                .HighScore;
+            WriteToLog("High score " + score.ToString() + " read from database " + System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + "\\scores.db");
+            return score;
+        }
 
         protected override void Draw(GameTime gameTime)
         {
@@ -444,7 +506,7 @@ _graphics.PreferredBackBufferHeight / 2);
                 {
                     line = File.ReadLines("log.txt").ElementAtOrDefault((pageNum * 20) + i - 1);
                     posY += 20;
-                    if (line == null) 
+                    if (line == null)
                     {
                         lineEnded = true;
                         _logBatch.DrawString(scoreFont, "End of log reached.", new Vector2(10, posY), Color.White);
@@ -460,57 +522,6 @@ _graphics.PreferredBackBufferHeight / 2);
             }
 
             base.Draw(gameTime);
-        }
-
-        private void Die()
-        {
-            dead = true;
-            WriteToLog("Player died with score " + score.ToString());
-            soundEffects[1].Play();
-            MediaPlayer.Play(gameOverMus);
-            int currentHighScore = ReadScore();
-            if (currentHighScore < score)
-            {
-                WriteScore(score);
-            }
-            
-        }
-
-        private void Restart(GameTime gameTime)
-        {
-            WriteToLog("Game restarting.");
-            restarting = true;
-            score = 0;
-            splitFactor = 10;
-            curDirection = 4;
-            lastDirection = 4;
-            trailCount = 0;
-            numLengths = 0;
-            ballSpeed = 100f;
-            speedTime = 0.015f;
-            timeSinceLastDraw = 0;
-            timeSinceBerryPickup = 0;
-            timeSinceUnpaused = (float)gameTime.TotalGameTime.TotalSeconds;
-            trailPos = new List<Vector2>();
-            berryPickedUp = false;
-            upPressed = false;
-            downPressed = false;
-            leftPressed = false;
-            rightPressed = false;
-            dead = false;
-            MediaPlayer.Stop();
-            ballPosition = new Vector2(_graphics.PreferredBackBufferWidth / 2,
-_graphics.PreferredBackBufferHeight / 2);
-            GenBerryPos();
-            base.Initialize();
-        }
-
-        private void GenBerryPos()
-        {
-            Random berryRnd = new Random();
-            berX = berryRnd.Next(1, _graphics.PreferredBackBufferWidth - 50);
-            berY = berryRnd.Next(1, _graphics.PreferredBackBufferHeight - 50);
-            WriteToLog("Berry getting generated at X: " + berX.ToString() + " Y: " + berY.ToString());
         }
 
         private void DrawGameOver()
