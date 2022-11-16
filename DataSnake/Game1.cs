@@ -560,66 +560,42 @@ _graphics.PreferredBackBufferHeight / 2),
 
         private void DrawHead()
         {
-            _spriteBatch.Begin();
+            SpriteEffects spriteEffect = SpriteEffects.None;
+            Texture2D texture = headHorizTexture;
             //1 = Up, 2 = Down, 3 = Left, 4 = Right 
             if (curDirection == 4)
             {
-                _spriteBatch.Draw(
-                    headHorizTexture,
-                    ballPosition,
-                    null,
-                    Color.White,
-                    0f,
-                    new Vector2(ballTexture.Width / 2, ballTexture.Height / 2),
-                    Vector2.One,
-                    SpriteEffects.None,
-                    0f
-                    );
+                texture = headHorizTexture;
+                spriteEffect = SpriteEffects.None;
             }
             else if (curDirection == 3)
             {
-                _spriteBatch.Draw(
-                    headHorizTexture,
-                    ballPosition,
-                    null,
-                    Color.White,
-                    0f,
-                    new Vector2(ballTexture.Width / 2, ballTexture.Height / 2),
-                    Vector2.One,
-                    SpriteEffects.FlipHorizontally,
-                    0f
-                    );
+                texture = headHorizTexture;
+                spriteEffect = SpriteEffects.FlipHorizontally;
             }
             else if (curDirection == 2)
             {
-                _spriteBatch.Draw(
-                    headVertTexture,
-                    ballPosition,
-                    null,
-                    Color.White,
-                    0f,
-                    new Vector2(ballTexture.Width / 2, ballTexture.Height / 2),
-                    Vector2.One,
-                    SpriteEffects.FlipVertically,
-                    0f
-                    );
+                texture = headVertTexture;
+                spriteEffect = SpriteEffects.FlipVertically;
             }
             else if (curDirection == 1)
             {
-                _spriteBatch.Draw(
-                    headVertTexture,
+                texture = headVertTexture;
+                spriteEffect = SpriteEffects.None;
+            }
+            _spriteBatch.Begin();
+            _spriteBatch.Draw(
+                    texture,
                     ballPosition,
                     null,
                     Color.White,
                     0f,
                     new Vector2(ballTexture.Width / 2, ballTexture.Height / 2),
                     Vector2.One,
-                    SpriteEffects.None,
+                    spriteEffect,
                     0f
                     );
-            }
             _spriteBatch.End();
-
         }
 
         private void DrawTail()
