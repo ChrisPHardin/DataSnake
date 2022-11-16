@@ -98,20 +98,6 @@ _graphics.PreferredBackBufferHeight / 2);
             base.Initialize();
             WriteToLog("Game initialized.");
         }
-
-        public static bool CheckTableExists()
-        {
-            try
-            {
-                bool exists = !db.Scores.Any();
-                return true;
-
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
         protected override void LoadContent()
         {
             //Initialize Sprite Batches
