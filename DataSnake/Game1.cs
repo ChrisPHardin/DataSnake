@@ -20,7 +20,7 @@ namespace DataSnake
     {
         static ScoreContext db = new ScoreContext();
 
-    Texture2D ballTexture;
+        Texture2D ballTexture;
         Texture2D berryTexture;
         Texture2D gameOverTexture;
         Texture2D pauseTexture;
