@@ -11,6 +11,8 @@ using System.Linq;
 
 namespace DataSnake
 {
+    //One SOLID principle, although not sure if it since the Game class is part of a NuGet package.
+    //Dependency Inversion: The higher level Game class is not dependent on any changes in this class.
     public class Game1 : Game
     {
         static ScoreContext db = new ScoreContext();
