@@ -22,3 +22,4 @@ This project uses a database to read and write the score and high score each gam
 1. Create a dictionary or list, populate it with several values, retrieve at least one value, and use it in your program  
 2. Implement a log that records errors, invalid inputs, or other important events and writes them to a text file  
 3. Make a generic class and use it  
+4. Add comments to your code explaining how you are using at least 2 of the solid principles
