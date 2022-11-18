@@ -11,7 +11,7 @@ using System.Linq;
 
 namespace DataSnake
 {
-    //One SOLID principle, although not sure if it since the Game class is part of a NuGet package.
+    //One SOLID principle, although not sure if it counts since the Game class is part of a NuGet package.
     //Dependency Inversion: The higher level Game class is not dependent on any changes in this class.
     public class Game1 : Game
     {
@@ -23,6 +23,7 @@ namespace DataSnake
         Texture2D berryTexture;
         Texture2D gameOverTexture;
         Texture2D pauseTexture;
+        Texture2D bgTexture;
         SpriteFont scoreFont;
         Vector2 ballPosition;
         Vector2 lengthPosition;
@@ -68,6 +69,7 @@ namespace DataSnake
         private SpriteBatch _snakeTail;
         private SpriteBatch _pauseSprite;
         private SpriteBatch _gameOverSprite;
+        private SpriteBatch _bgSprite;
 
         private Resources<SoundEffect> _sfxLoad = new();
         private Resources<Texture2D> _texLoad = new();
@@ -111,6 +113,7 @@ _graphics.PreferredBackBufferHeight / 2);
             _pauseSprite = new SpriteBatch(GraphicsDevice);
             _gameOverSprite = new SpriteBatch(GraphicsDevice);
             _logBatch = new SpriteBatch(GraphicsDevice);
+            _bgSprite = new SpriteBatch(GraphicsDevice);
 
             //Textures
             headHorizTexture = _texLoad.LoadContent("head1", this);
@@ -119,6 +122,7 @@ _graphics.PreferredBackBufferHeight / 2);
             berryTexture = _texLoad.LoadContent("berry", this);
             gameOverTexture = _texLoad.LoadContent("gameover", this);
             pauseTexture = _texLoad.LoadContent("paused", this);
+            bgTexture = _texLoad.LoadContent("bg", this);
 
             //SFX
             soundEffects.Add(_sfxLoad.LoadContent("pickup", this));
@@ -438,6 +442,21 @@ _graphics.PreferredBackBufferHeight / 2);
         protected override void Draw(GameTime gameTime)
         {
             _graphics.GraphicsDevice.Clear(Color.Black);
+            _bgSprite.Begin();
+            _bgSprite.Draw(
+                bgTexture,
+                new Vector2(_graphics.PreferredBackBufferWidth / 2,
+_graphics.PreferredBackBufferHeight / 2),
+                null,
+                Color.White,
+                0f,
+                new Vector2(bgTexture.Width / 2, bgTexture.Height / 2),
+                Vector2.One,
+                SpriteEffects.None,
+                0f
+                );
+            _bgSprite.End();
+
             if (!paused)
             {
                 DrawHead();
